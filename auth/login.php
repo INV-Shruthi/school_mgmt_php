@@ -1,47 +1,56 @@
 <?php
 session_start();
+require_once '../config/db.php';
 
-// Hardcoded credentials
-define('ADMIN_USERNAME', 'admin');
-define('ADMIN_PASSWORD', 'admin');
+$message = "";
 
-// Failed login tracking
-if (!isset($_SESSION['failed_attempts'])) {
-    $_SESSION['failed_attempts'] = 0;
-}
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $username = trim($_POST['username']);
+    $password = $_POST['password'];
 
-if (!isset($_SESSION['blocked_until'])) {
-    $_SESSION['blocked_until'] = 0;
-}
+    // Step 1: Get current time and fetch attempt data (only 1 row expected)
+    $current_time = new DateTime();
+    $stmt = $conn->query("SELECT * FROM login_attempts LIMIT 1");
+    $attemptData = $stmt->fetch_assoc();
+    $blocked = false;
+    $attempts = 0;
 
-// If already logged in, redirect to dashboard
-if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
-    header("Location: ../dashboard.php");
-    exit;
-}
+    if ($attemptData) {
+        $last_attempt_time = new DateTime($attemptData['last_attempt']);
+        $interval = $current_time->getTimestamp() - $last_attempt_time->getTimestamp();
 
-// Handle login form submission
-$error = "";
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    if (time() < $_SESSION['blocked_until']) {
-        $error = "Too many failed attempts. Try again after 5 minutes.";
+        if ($attemptData['attempts'] >= 3 && $interval < 300) {
+            $blocked = true;
+        }
+    }
+
+    if ($blocked) {
+        $message = "Too many failed attempts. Try again after 5 minutes.";
     } else {
-        $username = $_POST['username'];
-        $password = $_POST['password'];
-
-        if ($username === ADMIN_USERNAME && $password === ADMIN_PASSWORD) {
-            $_SESSION['admin_logged_in'] = true;
-            $_SESSION['failed_attempts'] = 0;
-            $_SESSION['blocked_until'] = 0;
+        if ($username === 'admin' && $password === 'admin') {
+            // Success
+            $_SESSION['username'] = $username;
+            $conn->query("DELETE FROM login_attempts");
             header("Location: ../dashboard.php");
-            exit;
+            exit();
         } else {
-            $_SESSION['failed_attempts'] += 1;
-            $error = "Invalid username or password.";
+            // Failed login
+            $attempts = ($attemptData) ? $attemptData['attempts'] + 1 : 1;
 
-            if ($_SESSION['failed_attempts'] >= 3) {
-                $_SESSION['blocked_until'] = time() + (5 * 60); // 5 minutes
-                $error = "Too many failed attempts. Try again after 5 minutes.";
+            if ($attemptData) {
+                $stmt = $conn->prepare("UPDATE login_attempts SET attempts = ?, last_attempt = NOW() WHERE id = ?");
+                $stmt->bind_param("ii", $attempts, $attemptData['id']);
+            } else {
+                $stmt = $conn->prepare("INSERT INTO login_attempts (attempts, last_attempt) VALUES (?, NOW())");
+                $stmt->bind_param("i", $attempts);
+            }
+
+            $stmt->execute();
+
+            if ($attempts >= 3) {
+                $message = "Too many failed attempts. Try again after 5 minutes.";
+            } else {
+                $message = "Invalid credentials. Attempt $attempts of 3.";
             }
         }
     }
@@ -49,25 +58,97 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 ?>
 
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Login - School Management System</title>
+    <meta charset="UTF-8">
+    <title>Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(to right, #74ebd5, #acb6e5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .login-container {
+            background-color: #ffffff;
+            padding: 40px 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .login-container h2 {
+            margin-bottom: 25px;
+            text-align: center;
+            color: #333;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px 15px;
+            margin: 10px 0 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .message {
+            color: red;
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        @media (max-width: 480px) {
+            .login-container {
+                padding: 30px 20px;
+            }
+        }
+    </style>
 </head>
 <body>
-    <h2>Admin Login</h2>
-
-    <?php if ($error): ?>
-        <p style="color: red;"><?php echo $error; ?></p>
-    <?php endif; ?>
-
-    <form method="POST" action="">
-        <label>Username:</label><br>
-        <input type="text" name="username" required><br><br>
-
-        <label>Password:</label><br>
-        <input type="password" name="password" required><br><br>
-
-        <button type="submit">Login</button>
-    </form>
+    <div class="login-container">
+        <h2>Login</h2>
+        <form method="POST" action="">
+            <input type="text" name="username" placeholder="Username" required />
+            <input type="password" name="password" placeholder="Password" required />
+            <button type="submit">Login</button>
+            <?php if (!empty($message)): ?>
+                <div class="message"><?= htmlspecialchars($message) ?></div>
+            <?php endif; ?>
+        </form>
+    </div>
 </body>
 </html>
