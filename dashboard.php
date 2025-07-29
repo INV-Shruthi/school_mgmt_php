@@ -8,51 +8,83 @@ if (!isset($_SESSION['username'])) {
 ?>
 
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>Dashboard - School Management System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f0f0f0;
-            padding: 40px;
+        * {
+            box-sizing: border-box;
         }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f2f7fb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
         .container {
-            max-width: 600px;
-            background: white;
-            margin: auto;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px #ccc;
+            background: #ffffff;
+            padding: 40px 30px;
+            border-radius: 12px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.08);
+            width: 100%;
+            max-width: 500px;
             text-align: center;
         }
+
         h2 {
-            margin-bottom: 20px;
+            margin-bottom: 30px;
+            color: #333;
         }
+
         .button {
             display: block;
             width: 100%;
             padding: 12px;
             margin: 10px 0;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            text-decoration: none;
-            border-radius: 6px;
             font-size: 16px;
+            background-color: #e7f1ff;
+            color: #0056b3;
+            border: 1px solid #cce0ff;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: background-color 0.2s;
         }
+
+        .button:hover {
+            background-color: #d6eaff;
+        }
+
         .logout {
-            background-color: #dc3545;
+            background-color: #ffeaea;
+            color: #b30000;
+            border: 1px solid #ffc2c2;
+        }
+
+        .logout:hover {
+            background-color: #ffd6d6;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 30px 20px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>Welcome, <?php echo $_SESSION['username']; ?>!</h2>
+        <h2>Welcome, <?= htmlspecialchars($_SESSION['username']) ?>!</h2>
 
-        <a class="button" href="students/register.php">➕ Student Registration</a>
-        <a class="button" href="students/list.php">📋 Student Listing</a>
-        <a class="button logout" href="auth/logout.php">🚪 Logout</a>
+        <a class="button" href="students/register.php">Register Student</a>
+        <a class="button" href="students/list.php">View Students</a>
+        <a class="button logout" href="auth/logout.php">Logout</a>
     </div>
 </body>
 </html>
