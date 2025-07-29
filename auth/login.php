@@ -1,49 +1,18 @@
 <?php
 session_start();
 
-// Hardcoded credentials
-define('ADMIN_USERNAME', 'admin');
-define('ADMIN_PASSWORD', 'admin');
-
-// Failed login tracking
-if (!isset($_SESSION['failed_attempts'])) {
-    $_SESSION['failed_attempts'] = 0;
-}
-
-if (!isset($_SESSION['blocked_until'])) {
-    $_SESSION['blocked_until'] = 0;
-}
-
-// If already logged in, redirect to dashboard
-if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
-    header("Location: ../dashboard.php");
-    exit;
-}
-
-// Handle login form submission
 $error = "";
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    if (time() < $_SESSION['blocked_until']) {
-        $error = "Too many failed attempts. Try again after 5 minutes.";
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $username = $_POST['username'] ?? '';
+    $password = $_POST['password'] ?? '';
+
+    if ($username === 'admin' && $password === 'admin') {
+        $_SESSION['username'] = $username;
+        header("Location: ../dashboard.php");
+        exit();
     } else {
-        $username = $_POST['username'];
-        $password = $_POST['password'];
-
-        if ($username === ADMIN_USERNAME && $password === ADMIN_PASSWORD) {
-            $_SESSION['admin_logged_in'] = true;
-            $_SESSION['failed_attempts'] = 0;
-            $_SESSION['blocked_until'] = 0;
-            header("Location: ../dashboard.php");
-            exit;
-        } else {
-            $_SESSION['failed_attempts'] += 1;
-            $error = "Invalid username or password.";
-
-            if ($_SESSION['failed_attempts'] >= 3) {
-                $_SESSION['blocked_until'] = time() + (5 * 60); // 5 minutes
-                $error = "Too many failed attempts. Try again after 5 minutes.";
-            }
-        }
+        $error = "Invalid username or password";
     }
 }
 ?>
@@ -51,23 +20,52 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Login - School Management System</title>
+    <title>School Management System</title>
+    <style>
+        body { font-family: Arial; padding: 40px; background: #f5f5f5; }
+        .login-box {
+            max-width: 400px;
+            margin: auto;
+            background: white;
+            padding: 30px;
+            box-shadow: 0 0 10px #ccc;
+            border-radius: 8px;
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+        }
+        .error {
+            color: red;
+            margin-bottom: 10px;
+        }
+    </style>
 </head>
 <body>
-    <h2>Admin Login</h2>
+    <div class="login-box">
+        <h2>Login</h2>
 
-    <?php if ($error): ?>
-        <p style="color: red;"><?php echo $error; ?></p>
-    <?php endif; ?>
+        <?php if ($error): ?>
+            <p class="error"><?php echo $error; ?></p>
+        <?php endif; ?>
 
-    <form method="POST" action="">
-        <label>Username:</label><br>
-        <input type="text" name="username" required><br><br>
+        <form method="post">
+            <label>Username:</label>
+            <input type="text" name="username" required>
 
-        <label>Password:</label><br>
-        <input type="password" name="password" required><br><br>
+            <label>Password:</label>
+            <input type="password" name="password" required>
 
-        <button type="submit">Login</button>
-    </form>
+            <button type="submit">Login</button>
+        </form>
+    </div>
 </body>
 </html>
